@@ -34,7 +34,17 @@ STATE_DIM   = N_SERVERS * 3 + 2   # cpu, conns, latency per server + rate + queu
 ACTION_DIM  = N_SERVERS
 PROM_URL    = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 CKPT_DIR    = os.getenv("CKPT_DIR", "./checkpoints")
-CKPT_PATH   = f"{CKPT_DIR}/dqn_latest.pt"
+CKPT_LOAD_PATH = os.getenv(
+    "RL_CHECKPOINT_LOAD_PATH",
+    f"{CKPT_DIR}/dqn_latest.pt"
+)
+CKPT_SAVE_PATH = os.getenv(
+    "RL_CHECKPOINT_SAVE_PATH",
+    f"{CKPT_DIR}/dqn_latest.pt"
+)
+SAVE_CHECKPOINTS = os.getenv(
+    "RL_SAVE_CHECKPOINTS", "true"
+).lower() == "true"
 os.makedirs(CKPT_DIR, exist_ok=True)
 
 # ── DQN Model ─────────────────────────────────────────────────
@@ -95,6 +105,8 @@ class DQNAgent:
         self.total_reward  = 0.0
         self.episode_steps = 0
         self.lock          = Lock()
+        self.training_enabled = True
+        self.eval_saved_epsilon = None
 
         self._last_state   = None
         self._last_action  = None
@@ -102,21 +114,40 @@ class DQNAgent:
         # Try to load existing checkpoint
         self.load_checkpoint()
 
-    def select_action(self, state: np.ndarray) -> int:
-        if random.random() < self.epsilon:
-            return random.randint(0, ACTION_DIM - 1)
-        with torch.no_grad():
-            t = torch.FloatTensor(state).unsqueeze(0)
-            q = self.policy_net(t)
-            return int(q.argmax().item())
+    def select_action(self, state: np.ndarray, healthy_mask=None) -> tuple[int, float]:
+        if healthy_mask is None:
+            healthy_mask = [True] * ACTION_DIM
+        if len(healthy_mask) != ACTION_DIM:
+            raise ValueError("healthy_mask must contain exactly 3 values")
+        if not all(isinstance(h, (bool, np.bool_)) for h in healthy_mask):
+            raise ValueError("All elements of healthy_mask must be boolean")
+        available = [i for i, healthy in enumerate(healthy_mask) if healthy]
+        if not available:
+            raise ValueError("No healthy backend available")
+        with self.lock:
+            with torch.no_grad():
+                t = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
+                q = self.policy_net(t).squeeze(0)
+                # Exploration is restricted to healthy backends.
+                if random.random() < self.epsilon:
+                    action = random.choice(available)
+                    return action, float(q[action].item())
+                # Prevent selection of unhealthy backends.
+                mask = torch.as_tensor(healthy_mask, dtype=torch.bool)
+                q[~mask] = -1e9
+                action = int(q.argmax().item())
+                return action, float(q[action].item())
 
     def q_values(self, state: np.ndarray) -> list:
-        with torch.no_grad():
-            t = torch.FloatTensor(state).unsqueeze(0)
-            return self.policy_net(t).squeeze().tolist()
+        with self.lock:
+            with torch.no_grad():
+                t = torch.FloatTensor(state).unsqueeze(0)
+                return self.policy_net(t).squeeze().tolist()
 
     def store_and_train(self, state, action, reward, next_state):
         with self.lock:
+            if not self.training_enabled:
+                return
             self.buffer.push(state, action, reward, next_state)
             self.total_reward += reward
             self.episode_steps += 1
@@ -155,21 +186,53 @@ class DQNAgent:
                          f"avg_reward={self.total_reward/max(1,self.episode_steps):.3f}")
 
     def save_checkpoint(self):
+        if not SAVE_CHECKPOINTS:
+            log.info("Checkpoint saving disabled; skipping save.")
+            return
         torch.save({
             "policy": self.policy_net.state_dict(),
             "target": self.target_net.state_dict(),
             "epsilon": self.epsilon,
             "step_count": self.step_count,
-        }, CKPT_PATH)
+        }, CKPT_SAVE_PATH)
 
     def load_checkpoint(self):
-        if os.path.exists(CKPT_PATH):
-            ck = torch.load(CKPT_PATH, map_location="cpu")
+        if os.path.exists(CKPT_LOAD_PATH):
+            ck = torch.load(CKPT_LOAD_PATH, map_location="cpu")
             self.policy_net.load_state_dict(ck["policy"])
             self.target_net.load_state_dict(ck["target"])
-            self.epsilon    = ck.get("epsilon", self.epsilon)
+            self.epsilon = ck.get("epsilon", self.epsilon)
             self.step_count = ck.get("step_count", 0)
-            log.info(f"Checkpoint loaded: step={self.step_count} eps={self.epsilon:.3f}")
+            log.info(
+                f"Checkpoint loaded from {CKPT_LOAD_PATH}: "
+                f"step={self.step_count} eps={self.epsilon:.3f}"
+            )
+        else:
+            log.warning(f"Checkpoint not found: {CKPT_LOAD_PATH}")
+
+    def enable_evaluation(self):
+        with self.lock:
+            if not self.training_enabled:
+                return
+            self.eval_saved_epsilon = self.epsilon
+            self.epsilon = 0.0
+            self.training_enabled = False
+            self.policy_net.eval()
+            prom_epsilon.set(0.0)
+
+    def enable_training(self):
+        with self.lock:
+            if self.training_enabled:
+                return
+            self.training_enabled = True
+            self.epsilon = (
+                self.eval_saved_epsilon
+                if self.eval_saved_epsilon is not None
+                else self.epsilon_min
+            )
+            self.eval_saved_epsilon = None
+            self.policy_net.train()
+            prom_epsilon.set(self.epsilon)
 
 # ── State Builder ─────────────────────────────────────────────
 def build_state(payload: dict) -> np.ndarray:
@@ -188,7 +251,7 @@ def build_state(payload: dict) -> np.ndarray:
         lat  = float(avg_lat[i])     if i < len(avg_lat)     else 100.0
 
         # Enrich with Prometheus if available
-        prom_cpu = _prom_metric(f'backend_cpu_utilization{{server_id="{i+1}"}}')
+        prom_cpu = _prom_metric(i)
         if prom_cpu is not None:
             cpu = prom_cpu
 
@@ -198,7 +261,8 @@ def build_state(payload: dict) -> np.ndarray:
 
     req_rate = float(payload.get("request_rate", 0))
     state.append(np.clip(req_rate / 500.0, 0, 1))
-    state.append(0.0)   # queue depth placeholder
+    queue_depth = float(payload.get("queue_depth", 0))
+    state.append(np.clip(queue_depth / 100.0, 0, 1))
     return np.array(state, dtype=np.float32)
 
 def compute_reward(state: np.ndarray, action: int, latency_ms: float) -> float:
@@ -212,25 +276,39 @@ def compute_reward(state: np.ndarray, action: int, latency_ms: float) -> float:
 
     return float(np.clip(r_latency + r_balance + r_capacity, -15.0, 1.0))
 
+# ── Background Prometheus Telemetry Cache ─────────────────────
 _prom_cache = {}
-_prom_cache_ts = {}
+_prom_cache_lock = threading.Lock()
+PROM_POLL_INTERVAL = 1.0
+PROM_REQUEST_TIMEOUT = 0.5
 
-def _prom_metric(query: str) -> float | None:
-    now = time.time()
-    if query in _prom_cache and now - _prom_cache_ts.get(query, 0) < 2:
-        return _prom_cache[query]
-    try:
-        r = requests.get(f"{PROM_URL}/api/v1/query",
-                         params={"query": query}, timeout=1)
-        result = r.json()["data"]["result"]
-        if result:
-            val = float(result[0]["value"][1])
-            _prom_cache[query] = val
-            _prom_cache_ts[query] = now
-            return val
-    except Exception:
-        pass
-    return None
+def poll_prometheus():
+    """Poll backend CPU metrics outside the request-handling path."""
+    while True:
+        for i in range(N_SERVERS):
+            query = f'backend_cpu_utilization{{server_id="{i+1}"}}'
+            try:
+                response = requests.get(
+                    f"{PROM_URL}/api/v1/query",
+                    params={"query": query},
+                    timeout=PROM_REQUEST_TIMEOUT
+                )
+                response.raise_for_status()
+                results = response.json()["data"]["result"]
+                if results:
+                    value = float(results[0]["value"][1])
+                    with _prom_cache_lock:
+                        _prom_cache[i] = value
+            except Exception as exc:
+                log.warning(
+                    "Prometheus polling failed for backend %d: %s",
+                    i + 1, exc
+                )
+        time.sleep(PROM_POLL_INTERVAL)
+
+def _prom_metric(server_idx: int):
+    with _prom_cache_lock:
+        return _prom_cache.get(server_idx, None)
 
 # ── Prometheus Metrics ────────────────────────────────────────
 prom_epsilon = Gauge("rl_epsilon", "Current exploration rate")
@@ -240,36 +318,67 @@ prom_decides = Counter("rl_decisions_total", "Total routing decisions made")
 # ── Flask API ─────────────────────────────────────────────────
 agent = DQNAgent()
 
-# Store RL transitions separately for each request
+# Store RL transitions separately for each request.
+TRANSITION_TTL_SECONDS = 10.0
 pending_transitions = {}
 transition_lock = threading.Lock()
+expired_transitions = 0
+
+
+def expire_stale_transitions_locked(now=None):
+    """Expire stale transitions. Caller must hold transition_lock."""
+    global expired_transitions
+
+    if now is None:
+        now = time.time()
+
+    stale_ids = [
+        request_id
+        for request_id, transition in pending_transitions.items()
+        if now - transition.get("created_at", now) > TRANSITION_TTL_SECONDS
+    ]
+
+    for request_id in stale_ids:
+        pending_transitions.pop(request_id, None)
+        expired_transitions += 1
+        log.warning("Expired stale transition request_id=%s", request_id)
+
+    return len(stale_ids)
 
 @app.route("/decide", methods=["POST"])
 def decide():
     """
     POST /decide — called by Go load balancer per request.
-    Body: { request_id: str, cpu_util: [], active_conns: [], avg_latency_ms: [], request_rate: N }
+    Body: { request_id: str, cpu_util: [], active_conns: [], avg_latency_ms: [], request_rate: N, healthy_mask: [bool] }
     Returns: { action: int, q_value: float }
     """
     payload = request.get_json(force=True) or {}
     request_id = payload.get("request_id")
 
     state = build_state(payload)
-    action = agent.select_action(state)
-    q_vals = agent.q_values(state)
+    healthy_mask = payload.get(
+        "healthy_mask",
+        [True] * ACTION_DIM
+    )
+    try:
+        action, q_val = agent.select_action(state, healthy_mask)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 503
 
     if request_id:
         with transition_lock:
+            expire_stale_transitions_locked()
             pending_transitions[request_id] = {
                 "state": state,
                 "action": action,
+                "created_at": time.time(),
             }
 
     prom_decides.inc()
 
     return jsonify({
         "action": action,
-        "q_value": float(max(q_vals))
+        "q_value": q_val
     })
 
 @app.route("/feedback", methods=["POST"])
@@ -285,6 +394,7 @@ def feedback():
     server_id = int(payload.get("server_id", 0))
 
     with transition_lock:
+        expire_stale_transitions_locked()
         transition = pending_transitions.pop(request_id, None)
 
     if transition is None:
@@ -302,11 +412,13 @@ def feedback():
         latency_ms
     )
 
-    # Build next state from Prometheus
+    # Use the actual post-request cluster measurements supplied by the load balancer.
+    # CPU may still be enriched from Prometheus inside build_state().
     next_payload = {
-        "cpu_util": [],
-        "active_conns": [],
-        "avg_latency_ms": []
+        "active_conns": payload.get("active_conns", []),
+        "avg_latency_ms": payload.get("avg_latency_ms", []),
+        "request_rate": payload.get("request_rate", 0.0),
+        "queue_depth": payload.get("queue_depth", 0.0),
     }
 
     next_state = build_state(next_payload)
@@ -324,13 +436,53 @@ def feedback():
         "server_id": server_id
     })
 
+@app.route("/save_checkpoint", methods=["POST"])
+def save_checkpoint():
+    with agent.lock:
+        agent.save_checkpoint()
+    return jsonify({
+        "status": "saved",
+        "step_count": agent.step_count
+    })
+
+@app.route("/eval_mode", methods=["POST"])
+def eval_mode():
+    payload = request.get_json(silent=True) or {}
+    mode = payload.get("mode")
+    if mode == "evaluation":
+        agent.enable_evaluation()
+    elif mode == "training":
+        agent.enable_training()
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "mode must be evaluation or training"
+        }), 400
+    return jsonify({
+        "status": "ok",
+        "mode": mode,
+        "epsilon": agent.epsilon,
+        "training_enabled": agent.training_enabled
+    })
+
 @app.route("/status", methods=["GET"])
 def status():
+    with transition_lock:
+        expire_stale_transitions_locked()
+        pending_count = len(pending_transitions)
+        expired_count = expired_transitions
+
     return jsonify({
-        "epsilon":    round(agent.epsilon, 4),
+        "training_enabled": agent.training_enabled,
+        "mode": "training" if agent.training_enabled else "evaluation",
+        "epsilon": round(agent.epsilon, 4),
         "step_count": agent.step_count,
         "buffer_len": len(agent.buffer),
-        "avg_reward": round(agent.total_reward / max(1, agent.episode_steps), 4),
+        "avg_reward": round(
+            agent.total_reward / max(1, agent.episode_steps), 4
+        ),
+        "pending_transitions": pending_count,
+        "expired_transitions": expired_count,
     })
 
 @app.route("/metrics")
@@ -342,6 +494,19 @@ def health():
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
-    log.info(f"RL Agent starting — state_dim={STATE_DIM} action_dim={ACTION_DIM}")
+    log.info(
+        f"RL Agent starting — state_dim={STATE_DIM} "
+        f"action_dim={ACTION_DIM}"
+    )
+    telemetry_thread = threading.Thread(
+        target=poll_prometheus,
+        daemon=True
+    )
+    telemetry_thread.start()
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, threaded=True)
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        threaded=True,
+        use_reloader=False
+    )
