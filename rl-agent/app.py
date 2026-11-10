@@ -70,6 +70,29 @@ class DQN(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+def compute_double_dqn_targets(
+    policy_net,
+    target_net,
+    next_states,
+    rewards,
+    gamma,
+):
+    """
+    Calculate Double DQN bootstrap targets.
+    Policy network selects the next action.
+    Target network evaluates the selected action.
+    """
+    with torch.no_grad():
+        next_actions = policy_net(next_states).argmax(
+            dim=1,
+            keepdim=True
+        )
+        next_q_values = target_net(next_states).gather(
+            1,
+            next_actions
+        ).squeeze(1)
+        return rewards + gamma * next_q_values
+
 # ── Replay Buffer ─────────────────────────────────────────────
 class ReplayBuffer:
     def __init__(self, capacity=10000):
@@ -278,9 +301,13 @@ class DQNAgent:
             ns = torch.FloatTensor(ns)
 
             current_q = self.policy_net(s).gather(1, a).squeeze()
-            with torch.no_grad():
-                max_next_q = self.target_net(ns).max(1)[0]
-            target_q = r + self.gamma * max_next_q
+            target_q = compute_double_dqn_targets(
+                self.policy_net,
+                self.target_net,
+                ns,
+                r,
+                self.gamma,
+            )
 
             loss = self.loss_fn(current_q, target_q)
             self.optimizer.zero_grad()

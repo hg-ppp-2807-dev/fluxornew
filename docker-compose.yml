@@ -61,8 +61,8 @@ services:
     environment:
       - PROMETHEUS_URL=http://prometheus:9090
       - N_SERVERS=3
-      - RL_CHECKPOINT_LOAD_PATH=${RL_CHECKPOINT_LOAD_PATH:-/app/checkpoints/dqn_latest.pt}
-      - RL_CHECKPOINT_SAVE_PATH=${RL_CHECKPOINT_SAVE_PATH:-/app/checkpoints/dqn_latest.pt}
+      - RL_CHECKPOINT_LOAD_PATH=${RL_CHECKPOINT_LOAD_PATH:-/app/checkpoints/dqn_baseline_step180700_20261107.pt}
+      - RL_CHECKPOINT_SAVE_PATH=${RL_CHECKPOINT_SAVE_PATH:-/app/checkpoints/ddqn_experiment.pt}
       - RL_SAVE_CHECKPOINTS=${RL_SAVE_CHECKPOINTS:-true}
     networks:
       - lb-net
