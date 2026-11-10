@@ -4,6 +4,24 @@ import { sleep, check } from 'k6';
 const LB = __ENV.LB_URL || 'http://localhost:8080';
 const scenario = __ENV.SCENARIO || 'steady';
 
+// Smoke test: constant 5 RPS for 120 seconds
+const smokeOptions = {
+  scenarios: {
+    smoke: {
+      executor: 'constant-arrival-rate',
+      rate: 5,
+      timeUnit: '1s',
+      duration: '120s',
+      preAllocatedVUs: 5,
+      maxVUs: 10,
+    },
+  },
+  thresholds: {
+    http_req_duration: ['p(95)<500'],
+    http_req_failed: ['rate<0.01'],
+  },
+};
+
 // Steady traffic: 50 VUs for 60 seconds
 const steadyOptions = {
   scenarios: {
@@ -49,11 +67,13 @@ const failureOptions = {
 };
 
 export const options =
-  scenario === 'steady' || scenario === 'normal'
-    ? steadyOptions
-    : scenario === 'failure'
-      ? failureOptions
-      : spikeOptions;
+  scenario === 'smoke'
+    ? smokeOptions
+    : scenario === 'steady' || scenario === 'normal'
+      ? steadyOptions
+      : scenario === 'failure'
+        ? failureOptions
+        : spikeOptions;
 
 export default function () {
   const res = http.get(`${LB}/work`, { timeout: '5s' });

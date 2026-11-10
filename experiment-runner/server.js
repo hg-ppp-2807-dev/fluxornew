@@ -245,10 +245,10 @@ app.post('/start', async (req, res) => {
   const algorithm = String(req.body?.algorithm || '').toLowerCase();
   const trial = String(req.body?.trial || 'trial1');
 
-  if (!['steady', 'spike', 'failure'].includes(scenario)) {
+  if (!['steady', 'spike', 'failure', 'smoke'].includes(scenario)) {
     return res.status(400).json({
       status: 'error',
-      message: 'scenario must be steady, spike, or failure'
+      message: 'scenario must be steady, spike, failure, or smoke'
     });
   }
 
