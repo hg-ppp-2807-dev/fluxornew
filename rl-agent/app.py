@@ -14,7 +14,13 @@ import torch.nn as nn
 import torch.optim as optim
 import requests
 from flask import Flask, request, jsonify
-from prometheus_client import Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    Gauge,
+    Counter,
+    Histogram,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
 
 logging.basicConfig(level=logging.INFO, format="[RL] %(message)s")
 log = logging.getLogger(__name__)
@@ -83,6 +89,90 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buf)
 
+# ── Reader-Writer Lock ─────────────────────────────────────────
+class ReadWriteLock:
+    """A reader-writer lock with writer priority and re-entrant writer support.
+    Multiple readers can hold read_lock concurrently.
+    Writers acquire exclusive write_lock.
+    """
+    def __init__(self):
+        self._cond = threading.Condition(threading.Lock())
+        self._readers = 0
+        self._writers_waiting = 0
+        self._writer_owner = None
+        self._writer_depth = 0
+
+    def acquire_read(self):
+        tid = threading.get_ident()
+        with self._cond:
+            while (self._writer_owner is not None and self._writer_owner != tid) or (self._writers_waiting > 0 and self._writer_owner != tid):
+                self._cond.wait()
+            self._readers += 1
+
+    def release_read(self):
+        with self._cond:
+            self._readers -= 1
+            if self._readers == 0:
+                self._cond.notify_all()
+
+    def acquire_write(self):
+        tid = threading.get_ident()
+        with self._cond:
+            if self._writer_owner == tid:
+                self._writer_depth += 1
+                return
+            self._writers_waiting += 1
+            while self._writer_owner is not None or self._readers > 0:
+                self._cond.wait()
+            self._writers_waiting -= 1
+            self._writer_owner = tid
+            self._writer_depth = 1
+
+    def release_write(self):
+        tid = threading.get_ident()
+        with self._cond:
+            if self._writer_owner != tid:
+                raise RuntimeError("release_write called by non-owner thread")
+            self._writer_depth -= 1
+            if self._writer_depth == 0:
+                self._writer_owner = None
+                self._cond.notify_all()
+
+    def __enter__(self):
+        self.acquire_write()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release_write()
+
+    class _ReadContext:
+        def __init__(self, lock):
+            self._lock = lock
+
+        def __enter__(self):
+            self._lock.acquire_read()
+            return self._lock
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self._lock.release_read()
+
+    class _WriteContext:
+        def __init__(self, lock):
+            self._lock = lock
+
+        def __enter__(self):
+            self._lock.acquire_write()
+            return self._lock
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self._lock.release_write()
+
+    def read_lock(self):
+        return self._ReadContext(self)
+
+    def write_lock(self):
+        return self._WriteContext(self)
+
 # ── DQN Agent ─────────────────────────────────────────────────
 class DQNAgent:
     def __init__(self):
@@ -104,7 +194,8 @@ class DQNAgent:
         self.step_count    = 0
         self.total_reward  = 0.0
         self.episode_steps = 0
-        self.lock          = Lock()
+        self.rwlock        = ReadWriteLock()
+        self.lock          = self.rwlock
         self.training_enabled = True
         self.eval_saved_epsilon = None
 
@@ -121,31 +212,56 @@ class DQNAgent:
             raise ValueError("healthy_mask must contain exactly 3 values")
         if not all(isinstance(h, (bool, np.bool_)) for h in healthy_mask):
             raise ValueError("All elements of healthy_mask must be boolean")
-        available = [i for i, healthy in enumerate(healthy_mask) if healthy]
+        available = [
+            i for i, healthy in enumerate(healthy_mask)
+            if healthy
+        ]
         if not available:
             raise ValueError("No healthy backend available")
-        with self.lock:
+
+        t = torch.as_tensor(
+            state,
+            dtype=torch.float32
+        ).unsqueeze(0)
+        mask = torch.as_tensor(
+            healthy_mask,
+            dtype=torch.bool
+        )
+
+        lock_wait_start = time.perf_counter()
+        with self.rwlock.read_lock():
+            rl_inference_lock_wait_seconds.observe(
+                time.perf_counter() - lock_wait_start
+            )
+            inference_start = time.perf_counter()
             with torch.no_grad():
-                t = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
                 q = self.policy_net(t).squeeze(0)
-                # Exploration is restricted to healthy backends.
                 if random.random() < self.epsilon:
                     action = random.choice(available)
-                    return action, float(q[action].item())
-                # Prevent selection of unhealthy backends.
-                mask = torch.as_tensor(healthy_mask, dtype=torch.bool)
-                q[~mask] = -1e9
-                action = int(q.argmax().item())
-                return action, float(q[action].item())
+                    q_value = float(q[action].item())
+                else:
+                    q_masked = q.clone()
+                    q_masked[~mask] = -1e9
+                    action = int(q_masked.argmax().item())
+                    q_value = float(q_masked[action].item())
+            rl_inference_seconds.observe(
+                time.perf_counter() - inference_start
+            )
+            return action, q_value
 
     def q_values(self, state: np.ndarray) -> list:
-        with self.lock:
+        t = torch.FloatTensor(state).unsqueeze(0)
+        with self.rwlock.read_lock():
             with torch.no_grad():
-                t = torch.FloatTensor(state).unsqueeze(0)
                 return self.policy_net(t).squeeze().tolist()
 
     def store_and_train(self, state, action, reward, next_state):
-        with self.lock:
+        # Fast path during evaluation.
+        if not self.training_enabled:
+            return
+        with self.rwlock.write_lock():
+            # Recheck after acquiring the lock because evaluation
+            # mode may have been enabled while this thread was waiting.
             if not self.training_enabled:
                 return
             self.buffer.push(state, action, reward, next_state)
@@ -189,20 +305,22 @@ class DQNAgent:
         if not SAVE_CHECKPOINTS:
             log.info("Checkpoint saving disabled; skipping save.")
             return
-        torch.save({
-            "policy": self.policy_net.state_dict(),
-            "target": self.target_net.state_dict(),
-            "epsilon": self.epsilon,
-            "step_count": self.step_count,
-        }, CKPT_SAVE_PATH)
+        with self.rwlock.write_lock():
+            torch.save({
+                "policy": self.policy_net.state_dict(),
+                "target": self.target_net.state_dict(),
+                "epsilon": self.epsilon,
+                "step_count": self.step_count,
+            }, CKPT_SAVE_PATH)
 
     def load_checkpoint(self):
         if os.path.exists(CKPT_LOAD_PATH):
-            ck = torch.load(CKPT_LOAD_PATH, map_location="cpu")
-            self.policy_net.load_state_dict(ck["policy"])
-            self.target_net.load_state_dict(ck["target"])
-            self.epsilon = ck.get("epsilon", self.epsilon)
-            self.step_count = ck.get("step_count", 0)
+            with self.rwlock.write_lock():
+                ck = torch.load(CKPT_LOAD_PATH, map_location="cpu")
+                self.policy_net.load_state_dict(ck["policy"])
+                self.target_net.load_state_dict(ck["target"])
+                self.epsilon = ck.get("epsilon", self.epsilon)
+                self.step_count = ck.get("step_count", 0)
             log.info(
                 f"Checkpoint loaded from {CKPT_LOAD_PATH}: "
                 f"step={self.step_count} eps={self.epsilon:.3f}"
@@ -211,7 +329,7 @@ class DQNAgent:
             log.warning(f"Checkpoint not found: {CKPT_LOAD_PATH}")
 
     def enable_evaluation(self):
-        with self.lock:
+        with self.rwlock.write_lock():
             if not self.training_enabled:
                 return
             self.eval_saved_epsilon = self.epsilon
@@ -221,7 +339,7 @@ class DQNAgent:
             prom_epsilon.set(0.0)
 
     def enable_training(self):
-        with self.lock:
+        with self.rwlock.write_lock():
             if self.training_enabled:
                 return
             self.training_enabled = True
@@ -315,35 +433,70 @@ prom_epsilon = Gauge("rl_epsilon", "Current exploration rate")
 prom_reward  = Gauge("rl_avg_reward", "Average episodic reward")
 prom_decides = Counter("rl_decisions_total", "Total routing decisions made")
 
+# RL decision profiling
+rl_state_build_seconds = Histogram(
+    "rl_state_build_seconds",
+    "Time spent constructing the RL state",
+    buckets=(0.0001, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05),
+)
+rl_inference_lock_wait_seconds = Histogram(
+    "rl_inference_lock_wait_seconds",
+    "Time waiting for the DQN inference lock",
+    buckets=(0.0001, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05),
+)
+rl_inference_seconds = Histogram(
+    "rl_inference_seconds",
+    "DQN forward-pass and action-selection duration",
+    buckets=(0.0001, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05),
+)
+rl_decide_total_seconds = Histogram(
+    "rl_decide_total_seconds",
+    "Total successful Python decision-handler duration",
+    buckets=(0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25),
+)
+
 # ── Flask API ─────────────────────────────────────────────────
 agent = DQNAgent()
 
 # Store RL transitions separately for each request.
 TRANSITION_TTL_SECONDS = 10.0
 pending_transitions = {}
+transition_expiry_queue = deque()
 transition_lock = threading.Lock()
 expired_transitions = 0
 
 
 def expire_stale_transitions_locked(now=None):
-    """Expire stale transitions. Caller must hold transition_lock."""
+    """
+    Expire transitions using an ordered expiry queue.
+    Caller must hold transition_lock.
+    """
     global expired_transitions
 
     if now is None:
-        now = time.time()
+        now = time.monotonic()
 
-    stale_ids = [
-        request_id
-        for request_id, transition in pending_transitions.items()
-        if now - transition.get("created_at", now) > TRANSITION_TTL_SECONDS
-    ]
+    expired_count = 0
+    while (
+        transition_expiry_queue
+        and transition_expiry_queue[0][0] <= now
+    ):
+        expires_at, request_id = transition_expiry_queue.popleft()
+        transition = pending_transitions.get(request_id)
+        # Ignore entries already consumed by feedback or replaced
+        # by a newer transition with the same request ID.
+        if (
+            transition is not None
+            and transition["expires_at"] == expires_at
+        ):
+            pending_transitions.pop(request_id, None)
+            expired_count += 1
 
-    for request_id in stale_ids:
-        pending_transitions.pop(request_id, None)
-        expired_transitions += 1
-        log.warning("Expired stale transition request_id=%s", request_id)
+    expired_transitions += expired_count
+    if expired_count:
+        log.info("Expired %d stale RL transitions", expired_count)
 
-    return len(stale_ids)
+    return expired_count
 
 @app.route("/decide", methods=["POST"])
 def decide():
@@ -352,10 +505,16 @@ def decide():
     Body: { request_id: str, cpu_util: [], active_conns: [], avg_latency_ms: [], request_rate: N, healthy_mask: [bool] }
     Returns: { action: int, q_value: float }
     """
+    decision_start = time.perf_counter()
     payload = request.get_json(force=True) or {}
     request_id = payload.get("request_id")
 
+    state_start = time.perf_counter()
     state = build_state(payload)
+    rl_state_build_seconds.observe(
+        time.perf_counter() - state_start
+    )
+
     healthy_mask = payload.get(
         "healthy_mask",
         [True] * ACTION_DIM
@@ -367,14 +526,23 @@ def decide():
 
     if request_id:
         with transition_lock:
-            expire_stale_transitions_locked()
+            now = time.monotonic()
+            expire_stale_transitions_locked(now)
+            expires_at = now + TRANSITION_TTL_SECONDS
             pending_transitions[request_id] = {
                 "state": state,
                 "action": action,
-                "created_at": time.time(),
+                "expires_at": expires_at,
             }
+            transition_expiry_queue.append(
+                (expires_at, request_id)
+            )
 
     prom_decides.inc()
+
+    rl_decide_total_seconds.observe(
+        time.perf_counter() - decision_start
+    )
 
     return jsonify({
         "action": action,
@@ -438,8 +606,7 @@ def feedback():
 
 @app.route("/save_checkpoint", methods=["POST"])
 def save_checkpoint():
-    with agent.lock:
-        agent.save_checkpoint()
+    agent.save_checkpoint()
     return jsonify({
         "status": "saved",
         "step_count": agent.step_count
