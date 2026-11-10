@@ -4,14 +4,14 @@ import { sleep, check } from 'k6';
 const LB = __ENV.LB_URL || 'http://localhost:8080';
 const scenario = __ENV.SCENARIO || 'steady';
 
-// Smoke test: constant 5 RPS for 120 seconds
+// Smoke / Stage 2 test: constant 5 RPS for 600 seconds
 const smokeOptions = {
   scenarios: {
     smoke: {
       executor: 'constant-arrival-rate',
       rate: 5,
       timeUnit: '1s',
-      duration: '120s',
+      duration: __ENV.DURATION || '600s',
       preAllocatedVUs: 5,
       maxVUs: 10,
     },

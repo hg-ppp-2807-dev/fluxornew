@@ -355,6 +355,59 @@ class DQNAgent:
         else:
             log.warning(f"Checkpoint not found: {CKPT_LOAD_PATH}")
 
+    def load_checkpoint_from_path(self, checkpoint_path: str):
+        """
+        Dynamically load a checkpoint from path with atomic model replacement,
+        parameter validation, evaluation enforcement, and optimizer reinitialization.
+        """
+        with self.rwlock.write_lock():
+            ck = torch.load(
+                checkpoint_path,
+                map_location="cpu",
+                weights_only=False
+            )
+            if not isinstance(ck, dict):
+                raise ValueError("Invalid checkpoint format: expected dictionary")
+            if "policy" not in ck or "target" not in ck:
+                raise ValueError("Checkpoint missing model weights ('policy' or 'target')")
+            if "step_count" not in ck or not isinstance(ck["step_count"], int) or ck["step_count"] < 0:
+                raise ValueError("Checkpoint step_count must be a non-negative integer")
+            if "epsilon" not in ck or not isinstance(ck["epsilon"], (int, float)):
+                raise ValueError("Checkpoint missing valid epsilon value")
+
+            # Validate using temporary model instances
+            new_policy = DQN(STATE_DIM, ACTION_DIM)
+            new_target = DQN(STATE_DIM, ACTION_DIM)
+            new_policy.load_state_dict(ck["policy"], strict=True)
+            new_target.load_state_dict(ck["target"], strict=True)
+
+            # Atomic replacement of active networks
+            self.policy_net = new_policy
+            self.target_net = new_target
+
+            # Reinitialize Adam optimizer against the newly loaded policy parameters
+            self.optimizer = optim.Adam(self.policy_net.parameters(), lr=1e-3)
+
+            # Restore step count from checkpoint
+            self.step_count = int(ck["step_count"])
+
+            # Force evaluation mode (override exploration to 0.0)
+            self.training_enabled = False
+            self.epsilon = 0.0
+            self.eval_saved_epsilon = None
+            self.policy_net.eval()
+            self.target_net.eval()
+            prom_epsilon.set(0.0)
+
+            # Reset replay buffer and episodic reward metrics
+            self.buffer = ReplayBuffer()
+            self.total_reward = 0.0
+            self.episode_steps = 0
+            log.info(
+                f"Dynamically loaded checkpoint {checkpoint_path}: "
+                f"step={self.step_count} (evaluation mode enforced, eps=0.0)"
+            )
+
     def enable_evaluation(self):
         with self.rwlock.write_lock():
             if not self.training_enabled:
@@ -365,16 +418,19 @@ class DQNAgent:
             self.policy_net.eval()
             prom_epsilon.set(0.0)
 
-    def enable_training(self):
+    def enable_training(self, epsilon: float | None = None):
         with self.rwlock.write_lock():
-            if self.training_enabled:
-                return
+            if epsilon is not None:
+                epsilon = float(epsilon)
+                if not 0.0 <= epsilon <= 1.0:
+                    raise ValueError("epsilon must be between 0.0 and 1.0")
             self.training_enabled = True
-            self.epsilon = (
-                self.eval_saved_epsilon
-                if self.eval_saved_epsilon is not None
-                else self.epsilon_min
-            )
+            if epsilon is not None:
+                self.epsilon = epsilon
+            elif self.eval_saved_epsilon is not None:
+                self.epsilon = self.eval_saved_epsilon
+            else:
+                self.epsilon = self.epsilon_min
             self.eval_saved_epsilon = None
             self.policy_net.train()
             prom_epsilon.set(self.epsilon)
@@ -639,6 +695,57 @@ def save_checkpoint():
         "step_count": agent.step_count
     })
 
+@app.route("/load_checkpoint", methods=["POST"])
+def load_checkpoint_route():
+    payload = request.get_json(silent=True) or {}
+    checkpoint_name = payload.get("checkpoint")
+    if not checkpoint_name or not isinstance(checkpoint_name, str):
+        return jsonify({
+            "status": "error",
+            "message": "checkpoint filename is required"
+        }), 400
+
+    base_name = os.path.basename(checkpoint_name)
+    if (
+        base_name != checkpoint_name
+        or "/" in checkpoint_name
+        or "\\" in checkpoint_name
+        or ".." in checkpoint_name
+        or not checkpoint_name.endswith(".pt")
+    ):
+        return jsonify({
+            "status": "error",
+            "message": "invalid filename or path traversal rejected"
+        }), 400
+
+    checkpoint_path = os.path.join(CKPT_DIR, base_name)
+    if not os.path.isfile(checkpoint_path):
+        return jsonify({
+            "status": "error",
+            "message": f"checkpoint file not found: {base_name}"
+        }), 404
+
+    with transition_lock:
+        pending_transitions.clear()
+        transition_expiry_queue.clear()
+
+    try:
+        agent.load_checkpoint_from_path(checkpoint_path)
+    except Exception as exc:
+        log.error(f"Failed to load checkpoint {base_name}: {exc}")
+        return jsonify({
+            "status": "error",
+            "message": f"failed to load checkpoint: {str(exc)}"
+        }), 400
+
+    return jsonify({
+        "status": "loaded",
+        "checkpoint": base_name,
+        "step_count": agent.step_count,
+        "epsilon": agent.epsilon,
+        "training_enabled": agent.training_enabled
+    })
+
 @app.route("/eval_mode", methods=["POST"])
 def eval_mode():
     payload = request.get_json(silent=True) or {}
@@ -646,7 +753,14 @@ def eval_mode():
     if mode == "evaluation":
         agent.enable_evaluation()
     elif mode == "training":
-        agent.enable_training()
+        raw_eps = payload.get("epsilon")
+        try:
+            agent.enable_training(epsilon=raw_eps)
+        except (ValueError, TypeError) as exc:
+            return jsonify({
+                "status": "error",
+                "message": str(exc)
+            }), 400
     else:
         return jsonify({
             "status": "error",

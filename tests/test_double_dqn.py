@@ -10,7 +10,7 @@ sys.path.insert(
     str(Path(__file__).resolve().parents[1] / "rl-agent")
 )
 
-from app import compute_double_dqn_targets
+from app import compute_double_dqn_targets, DQNAgent
 
 
 class FixedQNetwork(nn.Module):
@@ -113,6 +113,100 @@ class DoubleDQNTests(unittest.TestCase):
 
         self.assertFalse(target_q.requires_grad)
         self.assertIsNone(target_q.grad_fn)
+
+    def test_epsilon_override_and_preservation(self):
+        agent = DQNAgent()
+        initial_step = agent.step_count
+        weights_before = [p.clone() for p in agent.policy_net.parameters()]
+
+        # 1. Explicit epsilon 1.0 is accepted
+        agent.enable_training(epsilon=1.0)
+        self.assertTrue(agent.training_enabled)
+        self.assertEqual(agent.epsilon, 1.0)
+
+        # 2. Explicit epsilon 0.05 is accepted
+        agent.enable_training(epsilon=0.05)
+        self.assertTrue(agent.training_enabled)
+        self.assertEqual(agent.epsilon, 0.05)
+
+        # 3. Invalid epsilon is rejected with ValueError
+        with self.assertRaises(ValueError):
+            agent.enable_training(epsilon=1.5)
+        with self.assertRaises(ValueError):
+            agent.enable_training(epsilon=-0.01)
+
+        # 4. Omitting epsilon preserves saved restore behavior
+        agent.enable_training(epsilon=0.42)
+        agent.enable_evaluation()
+        self.assertFalse(agent.training_enabled)
+        self.assertEqual(agent.epsilon, 0.0)
+        agent.enable_training()  # No argument -> restores 0.42
+        self.assertTrue(agent.training_enabled)
+        self.assertEqual(agent.epsilon, 0.42)
+
+        # 5. Weights and step_count are not reset or altered by mode/epsilon changes
+        self.assertEqual(agent.step_count, initial_step)
+        for p_before, p_after in zip(weights_before, agent.policy_net.parameters()):
+            self.assertTrue(torch.equal(p_before, p_after))
+
+    def test_load_checkpoint_from_path_success(self):
+        agent = DQNAgent()
+
+        baseline_path = "/app/checkpoints/dqn_baseline_step180700_20261107.pt"
+        ddqn_path = "/app/checkpoints/ddqn_experiment.pt"
+
+        # Check baseline checkpoint loading
+        if Path(baseline_path).exists():
+            agent.load_checkpoint_from_path(baseline_path)
+            self.assertEqual(agent.step_count, 180700)
+            self.assertEqual(agent.epsilon, 0.0)
+            self.assertFalse(agent.training_enabled)
+            self.assertEqual(len(agent.buffer), 0)
+            # Verify optimizer references active policy parameters
+            policy_param = list(agent.policy_net.parameters())[0]
+            opt_param = agent.optimizer.param_groups[0]["params"][0]
+            self.assertIs(policy_param, opt_param)
+
+        # Check Double DQN checkpoint loading
+        if Path(ddqn_path).exists():
+            agent.load_checkpoint_from_path(ddqn_path)
+            self.assertEqual(agent.step_count, 184238)
+            self.assertEqual(agent.epsilon, 0.0)
+            self.assertFalse(agent.training_enabled)
+            self.assertEqual(len(agent.buffer), 0)
+            policy_param = list(agent.policy_net.parameters())[0]
+            opt_param = agent.optimizer.param_groups[0]["params"][0]
+            self.assertIs(policy_param, opt_param)
+
+    def test_load_checkpoint_from_path_rejection_and_atomicity(self):
+        agent = DQNAgent()
+        initial_step = agent.step_count
+        weights_before = [p.clone() for p in agent.policy_net.parameters()]
+
+        import tempfile
+
+        # Test 1: Corrupted / non-dictionary checkpoint
+        with tempfile.NamedTemporaryFile(suffix=".pt") as f:
+            torch.save(["not", "a", "dict"], f.name)
+            with self.assertRaises(ValueError):
+                agent.load_checkpoint_from_path(f.name)
+
+        # Test 2: Missing 'target' weights
+        with tempfile.NamedTemporaryFile(suffix=".pt") as f:
+            torch.save({"policy": agent.policy_net.state_dict(), "step_count": 100, "epsilon": 0.05}, f.name)
+            with self.assertRaises(ValueError):
+                agent.load_checkpoint_from_path(f.name)
+
+        # Test 3: Invalid negative step_count
+        with tempfile.NamedTemporaryFile(suffix=".pt") as f:
+            torch.save({"policy": agent.policy_net.state_dict(), "target": agent.target_net.state_dict(), "step_count": -5, "epsilon": 0.05}, f.name)
+            with self.assertRaises(ValueError):
+                agent.load_checkpoint_from_path(f.name)
+
+        # Verify atomicity: failed attempts did not alter active model or step count
+        self.assertEqual(agent.step_count, initial_step)
+        for p_before, p_after in zip(weights_before, agent.policy_net.parameters()):
+            self.assertTrue(torch.equal(p_before, p_after))
 
 
 if __name__ == "__main__":
