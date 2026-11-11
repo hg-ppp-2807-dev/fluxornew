@@ -1,0 +1,322 @@
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 1.3458e-05
+go_gc_duration_seconds{quantile="0.25"} 1.6792e-05
+go_gc_duration_seconds{quantile="0.5"} 4.4333e-05
+go_gc_duration_seconds{quantile="0.75"} 0.00055325
+go_gc_duration_seconds{quantile="1"} 0.001603875
+go_gc_duration_seconds_sum 32.269644026
+go_gc_duration_seconds_count 97731
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 19
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.22.12"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated and still in use.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 2.333032e+06
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated, even if freed.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 2.5824395128e+11
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 8128
+# HELP go_memstats_frees_total Total number of frees.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 1.041911374e+09
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 3.031544e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and still in use.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 2.333032e+06
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 2.0119552e+07
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use.
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 5.095424e+06
+# HELP go_memstats_heap_objects Number of allocated objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 4370
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 1.8587648e+07
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 2.5214976e+07
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 1.7943667406420076e+09
+# HELP go_memstats_lookups_total Total number of pointer lookups.
+# TYPE go_memstats_lookups_total counter
+go_memstats_lookups_total 0
+# HELP go_memstats_mallocs_total Total number of mallocs.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 1.041915744e+09
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 12000
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 15600
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 206720
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 359040
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 4.962288e+06
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 2.065128e+06
+# HELP go_memstats_stack_inuse_bytes Number of bytes in use by the stack allocator.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 4.128768e+06
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 4.128768e+06
+# HELP go_memstats_sys_bytes Number of bytes obtained from system.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 3.4823184e+07
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 52
+# HELP lb_active_connections Active connections per backend
+# TYPE lb_active_connections gauge
+lb_active_connections{server_id="0"} 0
+lb_active_connections{server_id="1"} 0
+lb_active_connections{server_id="2"} 0
+# HELP lb_request_latency_ms Request latency in ms
+# TYPE lb_request_latency_ms histogram
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="25"} 31938
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="50"} 426333
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="100"} 466611
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="250"} 466611
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="500"} 466611
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="1000"} 466611
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="2000"} 466611
+lb_request_latency_ms_bucket{algorithm="lc",server_id="0",le="+Inf"} 466611
+lb_request_latency_ms_sum{algorithm="lc",server_id="0"} 1.7926065e+07
+lb_request_latency_ms_count{algorithm="lc",server_id="0"} 466611
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="5"} 2
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="10"} 7
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="25"} 17
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="50"} 94375
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="100"} 262152
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="250"} 262153
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="500"} 262153
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="1000"} 262153
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="2000"} 262153
+lb_request_latency_ms_bucket{algorithm="lc",server_id="1",le="+Inf"} 262153
+lb_request_latency_ms_sum{algorithm="lc",server_id="1"} 1.4050157e+07
+lb_request_latency_ms_count{algorithm="lc",server_id="1"} 262153
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="25"} 0
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="50"} 1493
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="100"} 260461
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="250"} 260470
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="500"} 260470
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="1000"} 260470
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="2000"} 260470
+lb_request_latency_ms_bucket{algorithm="lc",server_id="2",le="+Inf"} 260470
+lb_request_latency_ms_sum{algorithm="lc",server_id="2"} 1.7744813e+07
+lb_request_latency_ms_count{algorithm="lc",server_id="2"} 260470
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="25"} 14773
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="50"} 801876
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="100"} 1.074668e+06
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="250"} 1.07482e+06
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="500"} 1.07482e+06
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="1000"} 1.07482e+06
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="2000"} 1.07482e+06
+lb_request_latency_ms_bucket{algorithm="rl",server_id="0",le="+Inf"} 1.07482e+06
+lb_request_latency_ms_sum{algorithm="rl",server_id="0"} 4.7779914e+07
+lb_request_latency_ms_count{algorithm="rl",server_id="0"} 1.07482e+06
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="25"} 2
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="50"} 4452
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="100"} 337097
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="250"} 358886
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="500"} 358886
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="1000"} 358886
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="2000"} 358886
+lb_request_latency_ms_bucket{algorithm="rl",server_id="1",le="+Inf"} 358886
+lb_request_latency_ms_sum{algorithm="rl",server_id="1"} 2.8711004e+07
+lb_request_latency_ms_count{algorithm="rl",server_id="1"} 358886
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="25"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="50"} 0
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="100"} 26780
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="250"} 64345
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="500"} 64345
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="1000"} 64345
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="2000"} 64345
+lb_request_latency_ms_bucket{algorithm="rl",server_id="2",le="+Inf"} 64345
+lb_request_latency_ms_sum{algorithm="rl",server_id="2"} 6.599695e+06
+lb_request_latency_ms_count{algorithm="rl",server_id="2"} 64345
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="25"} 20751
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="50"} 334341
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="100"} 367030
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="250"} 367051
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="500"} 367051
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="1000"} 367051
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="2000"} 367051
+lb_request_latency_ms_bucket{algorithm="rr",server_id="0",le="+Inf"} 367051
+lb_request_latency_ms_sum{algorithm="rr",server_id="0"} 1.4281588e+07
+lb_request_latency_ms_count{algorithm="rr",server_id="0"} 367051
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="5"} 6
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="10"} 10
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="25"} 24
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="50"} 103633
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="100"} 281347
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="250"} 281377
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="500"} 281377
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="1000"} 281377
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="2000"} 281377
+lb_request_latency_ms_bucket{algorithm="rr",server_id="1",le="+Inf"} 281377
+lb_request_latency_ms_sum{algorithm="rr",server_id="1"} 1.5042092e+07
+lb_request_latency_ms_count{algorithm="rr",server_id="1"} 281377
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="25"} 0
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="50"} 2194
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="100"} 366999
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="250"} 367045
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="500"} 367045
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="1000"} 367045
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="2000"} 367045
+lb_request_latency_ms_bucket{algorithm="rr",server_id="2",le="+Inf"} 367045
+lb_request_latency_ms_sum{algorithm="rr",server_id="2"} 2.5240479e+07
+lb_request_latency_ms_count{algorithm="rr",server_id="2"} 367045
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="25"} 36
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="50"} 3531
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="100"} 166829
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="250"} 186279
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="500"} 186289
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="1000"} 186295
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="2000"} 186295
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="0",le="+Inf"} 186295
+lb_request_latency_ms_sum{algorithm="rr_fallback",server_id="0"} 1.6513793e+07
+lb_request_latency_ms_count{algorithm="rr_fallback",server_id="0"} 186295
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="25"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="50"} 514
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="100"} 52879
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="250"} 168666
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="500"} 168672
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="1000"} 168679
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="2000"} 168679
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="1",le="+Inf"} 168679
+lb_request_latency_ms_sum{algorithm="rr_fallback",server_id="1"} 1.7628634e+07
+lb_request_latency_ms_count{algorithm="rr_fallback",server_id="1"} 168679
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="5"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="10"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="25"} 0
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="50"} 1
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="100"} 5189
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="250"} 186267
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="500"} 186281
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="1000"} 186290
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="2000"} 186290
+lb_request_latency_ms_bucket{algorithm="rr_fallback",server_id="2",le="+Inf"} 186290
+lb_request_latency_ms_sum{algorithm="rr_fallback",server_id="2"} 2.2075518e+07
+lb_request_latency_ms_count{algorithm="rr_fallback",server_id="2"} 186290
+# HELP lb_requests_total Total requests routed
+# TYPE lb_requests_total counter
+lb_requests_total{algorithm="lc",server_id="0"} 466611
+lb_requests_total{algorithm="lc",server_id="1"} 262153
+lb_requests_total{algorithm="lc",server_id="2"} 260470
+lb_requests_total{algorithm="rl",server_id="0"} 1.07482e+06
+lb_requests_total{algorithm="rl",server_id="1"} 358886
+lb_requests_total{algorithm="rl",server_id="2"} 64345
+lb_requests_total{algorithm="rr",server_id="0"} 367051
+lb_requests_total{algorithm="rr",server_id="1"} 281377
+lb_requests_total{algorithm="rr",server_id="2"} 367045
+lb_requests_total{algorithm="rr_fallback",server_id="0"} 186295
+lb_requests_total{algorithm="rr_fallback",server_id="1"} 168679
+lb_requests_total{algorithm="rr_fallback",server_id="2"} 186290
+# HELP lb_rl_decision_latency_ms Time taken for RL agent decisions in milliseconds
+# TYPE lb_rl_decision_latency_ms histogram
+lb_rl_decision_latency_ms_bucket{le="1"} 39775
+lb_rl_decision_latency_ms_bucket{le="2"} 263027
+lb_rl_decision_latency_ms_bucket{le="5"} 836165
+lb_rl_decision_latency_ms_bucket{le="10"} 982290
+lb_rl_decision_latency_ms_bucket{le="20"} 1.152756e+06
+lb_rl_decision_latency_ms_bucket{le="35"} 1.405194e+06
+lb_rl_decision_latency_ms_bucket{le="50"} 1.50893e+06
+lb_rl_decision_latency_ms_bucket{le="75"} 2.038898e+06
+lb_rl_decision_latency_ms_bucket{le="100"} 2.039193e+06
+lb_rl_decision_latency_ms_bucket{le="250"} 2.039305e+06
+lb_rl_decision_latency_ms_bucket{le="+Inf"} 2.039324e+06
+lb_rl_decision_latency_ms_sum 4.364181105399884e+07
+lb_rl_decision_latency_ms_count 2.039324e+06
+# HELP lb_rl_fallback_reasons_total RL fallback count grouped by reason
+# TYPE lb_rl_fallback_reasons_total counter
+lb_rl_fallback_reasons_total{reason="agent_http_error"} 0
+lb_rl_fallback_reasons_total{reason="agent_unavailable"} 539947
+lb_rl_fallback_reasons_total{reason="invalid_action"} 0
+lb_rl_fallback_reasons_total{reason="invalid_response"} 1314
+lb_rl_fallback_reasons_total{reason="marshal_error"} 0
+lb_rl_fallback_reasons_total{reason="no_healthy_backend"} 0
+lb_rl_fallback_reasons_total{reason="request_error"} 0
+lb_rl_fallback_reasons_total{reason="unhealthy_action"} 12
+# HELP lb_rl_fallbacks_total Total fallbacks from RL to RR
+# TYPE lb_rl_fallbacks_total counter
+lb_rl_fallbacks_total 541273
+# HELP lb_rl_feedback_dropped_total RL feedback jobs dropped because the bounded queue was full
+# TYPE lb_rl_feedback_dropped_total counter
+lb_rl_feedback_dropped_total 194788
+# HELP lb_rl_feedback_errors_total Failed RL feedback requests grouped by reason
+# TYPE lb_rl_feedback_errors_total counter
+lb_rl_feedback_errors_total{reason="http_error"} 0
+lb_rl_feedback_errors_total{reason="invalid_response"} 0
+lb_rl_feedback_errors_total{reason="request_error"} 15546
+lb_rl_feedback_errors_total{reason="response_read_error"} 28
+lb_rl_feedback_errors_total{reason="transition_skipped"} 6943
+# HELP lb_rl_timeouts_total Total timeouts calling RL agent
+# TYPE lb_rl_timeouts_total counter
+lb_rl_timeouts_total 539947
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 2684.3
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 10
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 3.0294016e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79430870323e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 1.264717824e+09
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 11775
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0

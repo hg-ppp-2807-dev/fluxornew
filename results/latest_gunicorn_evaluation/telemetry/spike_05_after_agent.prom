@@ -1,0 +1,113 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 5.295491e+06
+python_gc_objects_collected_total{generation="1"} 488830.0
+python_gc_objects_collected_total{generation="2"} 7762.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 9296.0
+python_gc_collections_total{generation="1"} 845.0
+python_gc_collections_total{generation="2"} 17.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="11",patchlevel="18",version="3.11.18"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 1.0981326848e+10
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 7.70187264e+08
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79433196421e+09
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 975.12
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 15.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP rl_epsilon Current exploration rate
+# TYPE rl_epsilon gauge
+rl_epsilon 0.0
+# HELP rl_avg_reward Average episodic reward
+# TYPE rl_avg_reward gauge
+rl_avg_reward 0.0
+# HELP rl_decisions_total Total routing decisions made
+# TYPE rl_decisions_total counter
+rl_decisions_total 426499.0
+# HELP rl_decisions_created Total routing decisions made
+# TYPE rl_decisions_created gauge
+rl_decisions_created 1.7943319657242448e+09
+# HELP rl_state_build_seconds Time spent constructing the RL state
+# TYPE rl_state_build_seconds histogram
+rl_state_build_seconds_bucket{le="0.0001"} 424120.0
+rl_state_build_seconds_bucket{le="0.0005"} 426471.0
+rl_state_build_seconds_bucket{le="0.001"} 426488.0
+rl_state_build_seconds_bucket{le="0.002"} 426498.0
+rl_state_build_seconds_bucket{le="0.005"} 426499.0
+rl_state_build_seconds_bucket{le="0.01"} 426499.0
+rl_state_build_seconds_bucket{le="0.025"} 426499.0
+rl_state_build_seconds_bucket{le="0.05"} 426499.0
+rl_state_build_seconds_bucket{le="+Inf"} 426499.0
+rl_state_build_seconds_count 426499.0
+rl_state_build_seconds_sum 12.52743330411613
+# HELP rl_state_build_seconds_created Time spent constructing the RL state
+# TYPE rl_state_build_seconds_created gauge
+rl_state_build_seconds_created 1.7943319657242522e+09
+# HELP rl_inference_lock_wait_seconds Time waiting for the DQN inference lock
+# TYPE rl_inference_lock_wait_seconds histogram
+rl_inference_lock_wait_seconds_bucket{le="0.0001"} 426296.0
+rl_inference_lock_wait_seconds_bucket{le="0.0005"} 426497.0
+rl_inference_lock_wait_seconds_bucket{le="0.001"} 426499.0
+rl_inference_lock_wait_seconds_bucket{le="0.002"} 426499.0
+rl_inference_lock_wait_seconds_bucket{le="0.005"} 426499.0
+rl_inference_lock_wait_seconds_bucket{le="0.01"} 426499.0
+rl_inference_lock_wait_seconds_bucket{le="0.025"} 426499.0
+rl_inference_lock_wait_seconds_bucket{le="0.05"} 426499.0
+rl_inference_lock_wait_seconds_bucket{le="+Inf"} 426499.0
+rl_inference_lock_wait_seconds_count 426499.0
+rl_inference_lock_wait_seconds_sum 1.1493340074885054
+# HELP rl_inference_lock_wait_seconds_created Time waiting for the DQN inference lock
+# TYPE rl_inference_lock_wait_seconds_created gauge
+rl_inference_lock_wait_seconds_created 1.7943319657242746e+09
+# HELP rl_inference_seconds DQN forward-pass and action-selection duration
+# TYPE rl_inference_seconds histogram
+rl_inference_seconds_bucket{le="0.0001"} 0.0
+rl_inference_seconds_bucket{le="0.0005"} 11.0
+rl_inference_seconds_bucket{le="0.001"} 65888.0
+rl_inference_seconds_bucket{le="0.002"} 137649.0
+rl_inference_seconds_bucket{le="0.005"} 322430.0
+rl_inference_seconds_bucket{le="0.01"} 417393.0
+rl_inference_seconds_bucket{le="0.025"} 426209.0
+rl_inference_seconds_bucket{le="0.05"} 426416.0
+rl_inference_seconds_bucket{le="+Inf"} 426499.0
+rl_inference_seconds_count 426499.0
+rl_inference_seconds_sum 1550.4631902726396
+# HELP rl_inference_seconds_created DQN forward-pass and action-selection duration
+# TYPE rl_inference_seconds_created gauge
+rl_inference_seconds_created 1.7943319657242844e+09
+# HELP rl_decide_total_seconds Total successful Python decision-handler duration
+# TYPE rl_decide_total_seconds histogram
+rl_decide_total_seconds_bucket{le="0.0005"} 5.0
+rl_decide_total_seconds_bucket{le="0.001"} 52329.0
+rl_decide_total_seconds_bucket{le="0.002"} 130479.0
+rl_decide_total_seconds_bucket{le="0.005"} 283549.0
+rl_decide_total_seconds_bucket{le="0.01"} 412469.0
+rl_decide_total_seconds_bucket{le="0.025"} 426033.0
+rl_decide_total_seconds_bucket{le="0.05"} 426403.0
+rl_decide_total_seconds_bucket{le="0.1"} 426493.0
+rl_decide_total_seconds_bucket{le="0.25"} 426499.0
+rl_decide_total_seconds_bucket{le="+Inf"} 426499.0
+rl_decide_total_seconds_count 426499.0
+rl_decide_total_seconds_sum 1755.731769082311
+# HELP rl_decide_total_seconds_created Total successful Python decision-handler duration
+# TYPE rl_decide_total_seconds_created gauge
+rl_decide_total_seconds_created 1.7943319657242923e+09

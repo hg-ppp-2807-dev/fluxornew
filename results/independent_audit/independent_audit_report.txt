@@ -1,0 +1,47 @@
+FLUXOR INDEPENDENT NUMERICAL AUDIT
+==========================================
+Baseline DDQN trials: 15
+Gunicorn DDQN trials: 15
+
+PROMETHEUS / K6 CROSS-CHECKS
+------------------------------------------
+Request counter matches all 15 trials: True
+Fallback counter matches all 15 trials: True
+Trials with request-counter mismatch: 0
+Trials with fallback-counter mismatch: 0
+
+Gunicorn trial-level checks:
+steady T1: k6 requests=21103, Prom routed=21103, fallback counter=65, fallback-routed=65, HTTP status-check failures=0.0, k6 failure rate=0.0
+steady T2: k6 requests=20892, Prom routed=20892, fallback counter=5, fallback-routed=5, HTTP status-check failures=0.0, k6 failure rate=0.0
+steady T3: k6 requests=20915, Prom routed=20915, fallback counter=1, fallback-routed=1, HTTP status-check failures=0.0, k6 failure rate=0.0
+steady T4: k6 requests=21468, Prom routed=21468, fallback counter=5, fallback-routed=5, HTTP status-check failures=0.0, k6 failure rate=0.0
+steady T5: k6 requests=21002, Prom routed=21002, fallback counter=62, fallback-routed=62, HTTP status-check failures=0.0, k6 failure rate=0.0
+spike T1: k6 requests=65201, Prom routed=65201, fallback counter=1931, fallback-routed=1931, HTTP status-check failures=0.0, k6 failure rate=0.0
+spike T2: k6 requests=62023, Prom routed=62023, fallback counter=19848, fallback-routed=19848, HTTP status-check failures=0.0, k6 failure rate=0.0
+spike T3: k6 requests=65445, Prom routed=65445, fallback counter=1193, fallback-routed=1193, HTTP status-check failures=0.0, k6 failure rate=0.0
+spike T4: k6 requests=65752, Prom routed=65752, fallback counter=2227, fallback-routed=2227, HTTP status-check failures=0.0, k6 failure rate=0.0
+spike T5: k6 requests=65777, Prom routed=65777, fallback counter=1248, fallback-routed=1248, HTTP status-check failures=0.0, k6 failure rate=0.0
+failure T1: k6 requests=31362, Prom routed=31362, fallback counter=22, fallback-routed=22, HTTP status-check failures=0.0, k6 failure rate=0.0
+failure T2: k6 requests=31109, Prom routed=31109, fallback counter=13, fallback-routed=13, HTTP status-check failures=0.0, k6 failure rate=0.0
+failure T3: k6 requests=31596, Prom routed=31596, fallback counter=51, fallback-routed=51, HTTP status-check failures=0.0, k6 failure rate=0.0
+failure T4: k6 requests=31655, Prom routed=31655, fallback counter=45, fallback-routed=45, HTTP status-check failures=1.0, k6 failure rate=3.15905860053704e-05
+failure T5: k6 requests=31367, Prom routed=31367, fallback counter=0, fallback-routed=0, HTTP status-check failures=0.0, k6 failure rate=0.0
+
+SCENARIO SUMMARY
+------------------------------------------
+Flask baseline / steady: n=5, requests=105306, mean throughput=350.15±3.49 RPS, pooled throughput=350.15 RPS, mean latency=41.69±1.43 ms, mean trial P95=55.39±1.85 ms, mean trial fallback=0.082%, pooled fallback=0.082%, HTTP errors=0
+Gunicorn / steady: n=5, requests=105380, mean throughput=350.41±3.90 RPS, pooled throughput=350.41 RPS, mean latency=41.55±1.56 ms, mean trial P95=55.80±1.59 ms, mean trial fallback=0.131%, pooled fallback=0.131%, HTTP errors=0
+Flask baseline / spike: n=5, requests=301870, mean throughput=753.41±11.95 RPS, pooled throughput=753.41 RPS, mean latency=85.78±2.95 ms, mean trial P95=119.26±7.43 ms, mean trial fallback=37.862%, pooled fallback=37.567%, HTTP errors=0
+Gunicorn / spike: n=5, requests=324198, mean throughput=809.10±19.90 RPS, pooled throughput=809.10 RPS, mean latency=72.99±4.42 ms, mean trial P95=100.25±12.06 ms, mean trial fallback=8.414%, pooled fallback=8.158%, HTTP errors=0
+Flask baseline / failure: n=5, requests=155587, mean throughput=345.18±2.07 RPS, pooled throughput=345.18 RPS, mean latency=43.79±0.86 ms, mean trial P95=57.59±0.34 ms, mean trial fallback=0.092%, pooled fallback=0.093%, HTTP errors=2
+Gunicorn / failure: n=5, requests=157089, mean throughput=348.50±2.44 RPS, pooled throughput=348.50 RPS, mean latency=42.39±1.01 ms, mean trial P95=56.61±0.81 ms, mean trial fallback=0.083%, pooled fallback=0.083%, HTTP errors=1
+
+INTERPRETATION NOTES
+------------------------------------------
+- Latency and P95 summaries are means and sample SDs across five trial summaries.
+- They are not pooled request-level latency percentiles.
+- Trial fallback mean is unweighted; pooled fallback is total fallbacks / total requests.
+- Pooled throughput is total requests / sum of per-trial active durations inferred from k6 count/rate.
+- HTTP errors use the explicit 'status is 200' check failure count.
+- A mismatch in Prometheus counters requires investigation before reporting the affected metric.
+- n=5 per scenario; do not claim statistical significance from these descriptive summaries.

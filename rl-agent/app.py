@@ -511,6 +511,24 @@ def _prom_metric(server_idx: int):
     with _prom_cache_lock:
         return _prom_cache.get(server_idx, None)
 
+_telemetry_thread = None
+_telemetry_start_lock = threading.Lock()
+
+def start_telemetry_thread():
+    """Start exactly one Prometheus polling thread per worker process."""
+    global _telemetry_thread
+    with _telemetry_start_lock:
+        if _telemetry_thread is not None and _telemetry_thread.is_alive():
+            log.info("Prometheus telemetry thread already running")
+            return
+        _telemetry_thread = threading.Thread(
+            target=poll_prometheus,
+            name="prometheus-telemetry",
+            daemon=True,
+        )
+        _telemetry_thread.start()
+        log.info("Prometheus telemetry thread started")
+
 # ── Prometheus Metrics ────────────────────────────────────────
 prom_epsilon = Gauge("rl_epsilon", "Current exploration rate")
 prom_reward  = Gauge("rl_avg_reward", "Average episodic reward")
@@ -806,11 +824,7 @@ if __name__ == "__main__":
         f"RL Agent starting — state_dim={STATE_DIM} "
         f"action_dim={ACTION_DIM}"
     )
-    telemetry_thread = threading.Thread(
-        target=poll_prometheus,
-        daemon=True
-    )
-    telemetry_thread.start()
+    start_telemetry_thread()
     port = int(os.environ.get("PORT", 5000))
     app.run(
         host="0.0.0.0",
